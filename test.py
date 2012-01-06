@@ -2,10 +2,14 @@
 
 from portaudio.stream import *
 
-stream = Stream()
-stream.open()
-stream.write('asdlkjasdlkajsdlkajasdlkjasldk')
-stream.close()
-
-with Stream() as stream:
+with PortAudio():
+    stream = Stream()
+    stream.open()
+    stream.start()
     stream.write('asdlkjasdlkajsdlkajasdlkjasldk')
+    stream.stop()
+    stream.close()
+
+with PortAudio():
+    with Stream() as stream:
+        stream.write('asdlkjasdlkajsdlkajasdlkjasldk')
