@@ -1,3 +1,4 @@
 *~
 *.pyc
 portaudio_src/
+*.bak
