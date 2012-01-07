@@ -8,30 +8,14 @@ from portaudio import _portaudio
 # these docs are great
 # http://portaudio.com/docs/v19-doxydocs/api_overview.html
 
-class PortAudio(object):
-    """
-    Context manager for using PortAudio
-    """
-    def __enter__(self):
-        try:
-            raise get_exception(_portaudio.Pa_Initialize())
-        except NoError:
-            pass
-        return self
-
-    def __exit__(self, type, value, traceback):
-        err = _portaudio.Pa_Terminate()
-        try:
-            raise get_exception(err)
-        except NoError:
-            pass
-
 class Stream(object):
 
-    def __init__(self):
-        self.sample_rate = 44100
-        self.frames_per_buffer = 200
-        self.flags = _portaudio.paClipOff
+    def __init__(self, sample_rate=44100, frames_per_buffer=1024,
+                 channel_count=2, flags=_portaudio.paClipOff):
+        self.sample_rate = sample_rate
+        self.frames_per_buffer = frames_per_buffer
+        self.channel_count = channel_count
+        self.flags = flags
         self.stream = POINTER(c_void_p)()
 
     def __enter__(self):
@@ -43,16 +27,31 @@ class Stream(object):
         self.stop()
         self.close()
 
-    def open(self):
+    def build_output_parameters(self, device=None,
+                                sample_format=_portaudio.paFloat32,
+                                suggested_latency=None):
         output_parameters = _portaudio.PaStreamParameters()
-        output_parameters.device = _portaudio.Pa_GetDefaultOutputDevice()
-        assert output_parameters.device != _portaudio.paNoDevice
-        output_parameters.channelCount = 2
-        output_parameters.sampleFormat = _portaudio.paFloat32
-        device_info = _portaudio.Pa_GetDeviceInfo( output_parameters.device )
-        output_parameters.suggestedLatency = device_info.contents.defaultLowOutputLatency;
-        output_parameters.hostApiSpecificStreamInfo = None
 
+        # set the device
+        if device is None:
+            device = _portaudio.Pa_GetDefaultOutputDevice()
+        output_parameters.device = device
+        assert output_parameters.device != _portaudio.paNoDevice
+
+        output_parameters.channelCount = self.channel_count
+        output_parameters.sampleFormat = sample_format
+
+        # set the suggested output latency
+        if suggested_latency is None:
+            device_info = _portaudio.Pa_GetDeviceInfo( output_parameters.device )
+            suggested_latency = device_info.contents.defaultLowOutputLatency
+        output_parameters.suggestedLatency = suggested_latency
+
+        output_parameters.hostApiSpecificStreamInfo = None
+        return output_parameters
+
+    def open(self, *args, **kwargs):
+        output_parameters = self.build_output_parameters(*args, **kwargs)
         err = _portaudio.Pa_OpenStream(byref(self.stream),
                                        None,
                                        byref(output_parameters),
@@ -66,7 +65,6 @@ class Stream(object):
             raise get_exception(err)
         except NoError:
             print('stream opened')
-
 
     def read(self, size):
         pass
@@ -85,11 +83,21 @@ class Stream(object):
         except NoError:
             print('stream started')
 
-    def write(self, bytes):
-        print(_portaudio.Pa_GetStreamWriteAvailable(self.stream))
-        buff_constructor = c_float * self.frames_per_buffer
-        buff = buff_constructor(*range(self.frames_per_buffer))
-        err = _portaudio.Pa_WriteStream(self.stream, byref(buff), c_ulong(self.frames_per_buffer))
+    def write(self, buff, frames_per_buffer):
+        if frames_per_buffer is None:
+            frames_per_buffer = len(frames_per_buffer)
+        value = _portaudio.Pa_GetStreamWriteAvailable(self.stream)
+        if value < 0:
+            # if value is negative, its a PaError code
+            try:
+                raise get_exception(value)
+            except NoError:
+                pass
+        else:
+            # otherwise its the max number of frames we can write
+            print('Max frames to write: %s' % value)
+
+        err = _portaudio.Pa_WriteStream(self.stream, byref(buff), c_ulong(frames_per_buffer))
         try:
             raise get_exception(err)
         except NoError:
