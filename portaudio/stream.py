@@ -50,11 +50,42 @@ class Stream(object):
         output_parameters.hostApiSpecificStreamInfo = None
         return output_parameters
 
-    def open(self, *args, **kwargs):
-        output_parameters = self.build_output_parameters(*args, **kwargs)
+    def build_input_parameters(self, device=None,
+                                sample_format=_portaudio.paFloat32,
+                                suggested_latency=None):
+        input_parameters = _portaudio.PaStreamParameters()
+
+        # set the device
+        if device is None:
+            device = _portaudio.Pa_GetDefaultInputDevice()
+        input_parameters.device = device
+        assert input_parameters.device != _portaudio.paNoDevice
+
+        input_parameters.channelCount = self.channel_count
+        input_parameters.sampleFormat = sample_format
+
+        # set the suggested output latency
+        if suggested_latency is None:
+            device_info = _portaudio.Pa_GetDeviceInfo( input_parameters.device )
+            suggested_latency = device_info.contents.defaultLowOutputLatency
+        input_parameters.suggestedLatency = suggested_latency
+
+        input_parameters.hostApiSpecificStreamInfo = None
+        return input_parameters
+
+    def open(self, mode='rw', input_parameters=None, output_parameters=None):
+        if 'w' in mode:
+            output_parameters_ref = byref(output_parameters or self.build_output_parameters())
+        else:
+            output_parameters_ref = None
+        if 'r' in mode:
+            input_parameters_ref = byref(input_parameters or self.build_input_parameters())
+        else:
+            input_parameters_ref = None
+
         err = _portaudio.Pa_OpenStream(byref(self.stream),
-                                       None,
-                                       byref(output_parameters),
+                                       input_parameters_ref,
+                                       output_parameters_ref,
                                        self.sample_rate,
                                        c_ulong(self.frames_per_buffer),
                                        self.flags,
@@ -64,24 +95,49 @@ class Stream(object):
         try:
             raise get_exception(err)
         except NoError:
-            print('stream opened')
+            pass
 
-    def read(self, size):
-        pass
-
-    def stop(self):
-        err = _portaudio.Pa_StopStream(self.stream)
+    def close(self):
+        err = _portaudio.Pa_CloseStream(self.stream)
         try:
             raise get_exception(err)
         except NoError:
-            print('stream stopped')
+            pass
 
     def start(self):
         err = _portaudio.Pa_StartStream(self.stream)
         try:
             raise get_exception(err)
         except NoError:
-            print('stream started')
+            pass
+
+    def stop(self):
+        err = _portaudio.Pa_StopStream(self.stream)
+        try:
+            raise get_exception(err)
+        except NoError:
+            pass
+
+    def read(self, size=None):
+        if size is None:
+            size = self.frames_per_buffer
+
+        value = _portaudio.Pa_GetStreamReadAvailable(self.stream)
+        if value < 0:
+            # if value is negative, its a PaError code
+            try:
+                raise get_exception(value)
+            except NoError:
+                pass
+
+        buff = c_void_p()
+        err = _portaudio.Pa_ReadStream(self.stream, byref(buff), c_ulong(size))
+        try:
+            raise get_exception(err)
+        except NoError:
+            pass
+
+        return buff
 
     def write(self, buff, frames_per_buffer):
         if frames_per_buffer is None:
@@ -93,19 +149,9 @@ class Stream(object):
                 raise get_exception(value)
             except NoError:
                 pass
-        else:
-            # otherwise its the max number of frames we can write
-            print('Max frames to write: %s' % value)
 
         err = _portaudio.Pa_WriteStream(self.stream, byref(buff), c_ulong(frames_per_buffer))
         try:
             raise get_exception(err)
         except NoError:
             pass
-
-    def close(self):
-        err = _portaudio.Pa_CloseStream(self.stream)
-        try:
-            raise get_exception(err)
-        except NoError:
-            print('stream stopped')

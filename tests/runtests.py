@@ -4,7 +4,11 @@ import sys
 import os
 
 # was necessary for python3
-sys.path.append(os.path.join(os.path.dirname(__file__), 'portaudio'))
+sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), '..', 'portaudio')))
+sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), '..', )))
+
+from pprint import pprint
+pprint(sys.path)
 
 from portaudio import PortAudio
 from portaudio.stream import Stream
@@ -21,10 +25,14 @@ with PortAudio():
     TABLE_SIZE = 200
     CHANNELS = 2
 
-    stream = Stream(sample_rate=SAMPLE_RATE, frames_per_buffer=FRAMES_PER_BUFFER,
-                    channel_count=CHANNELS)
+    out_stream = Stream(sample_rate=SAMPLE_RATE, frames_per_buffer=FRAMES_PER_BUFFER,
+                        channel_count=CHANNELS)
+    out_stream.open(mode='w')
 
-    stream.open()
+    in_stream = Stream(sample_rate=SAMPLE_RATE, frames_per_buffer=FRAMES_PER_BUFFER,
+                        channel_count=CHANNELS)
+    in_stream.open(mode='r')
+
     buff = ((c_float * CHANNELS) * FRAMES_PER_BUFFER)()
     # initialise sinusoidal wavetable
     sine_constructor = (c_float * TABLE_SIZE)
@@ -37,26 +45,26 @@ with PortAudio():
     right_inc = 4
 
     buffer_count = int(((NUM_SECONDS * SAMPLE_RATE) / FRAMES_PER_BUFFER))
-    while True:
-        for k in range(3):
-            stream.start()
-            for i in range(buffer_count):
-                for j in range(FRAMES_PER_BUFFER):
-                    buff[j][0] = sine[left_phase]
-                    buff[j][1] = sine[right_phase]
 
-                    left_phase += left_inc
-                    if left_phase >= TABLE_SIZE:
-                        left_phase -= TABLE_SIZE
+    for k in range(10):
+        out_stream.start()
+        for i in range(buffer_count):
+            for j in range(FRAMES_PER_BUFFER):
+                buff[j][0] = sine[left_phase]
+                buff[j][1] = sine[right_phase]
 
-                    right_phase += right_inc
-                    if right_phase >= TABLE_SIZE:
-                        right_phase -= TABLE_SIZE
+                left_phase += left_inc
+                if left_phase >= TABLE_SIZE:
+                    left_phase -= TABLE_SIZE
 
-                stream.write(buff, FRAMES_PER_BUFFER)
-            stream.stop()
+                right_phase += right_inc
+                if right_phase >= TABLE_SIZE:
+                    right_phase -= TABLE_SIZE
 
-            left_inc += 1
-            right_inc += 1
+            out_stream.write(buff, FRAMES_PER_BUFFER)
+        out_stream.stop()
 
-    stream.close()
+        left_inc += 1
+        right_inc += 1
+
+    out_stream.close()
