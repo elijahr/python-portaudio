@@ -1,4 +1,5 @@
-
+import ctypes
+from portaudio._portaudio import PaStreamCallback
 from portaudio.exceptions import get_exception, NoError
 from portaudio import flags
 
@@ -73,24 +74,21 @@ class Stream(object):
         input_parameters.hostApiSpecificStreamInfo = None
         return input_parameters
 
-    def open(self, mode='rw', input_parameters=None, output_parameters=None):
+    def open(self, mode='rw', input_parameters=None, output_parameters=None, callback=None, user_data=None):
         if 'w' in mode:
-            output_parameters_ref = byref(output_parameters or self.build_output_parameters())
-        else:
-            output_parameters_ref = None
+            output_parameters = output_parameters or self.build_output_parameters()
+
         if 'r' in mode:
-            input_parameters_ref = byref(input_parameters or self.build_input_parameters())
-        else:
-            input_parameters_ref = None
+            input_parameters = input_parameters or self.build_input_parameters()
 
         err = _portaudio.Pa_OpenStream(byref(self.stream),
-                                       input_parameters_ref,
-                                       output_parameters_ref,
+                                       byref(input_parameters) if input_parameters else None,
+                                       byref(output_parameters) if output_parameters else None,
                                        self.sample_rate,
                                        c_ulong(self.frames_per_buffer),
                                        self.flags,
-                                       None,
-                                       None)
+                                       byref(PaStreamCallback(callback)) if callback else None,
+                                       byref(user_data) if user_data else None)
 
         try:
             raise get_exception(err)
