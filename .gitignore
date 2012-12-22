@@ -5,3 +5,4 @@ portaudio_src/
 .idea/*
 portaudio_ctypes.egg-info
 pyenv/*
+extras/portaudio/*
