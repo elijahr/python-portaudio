@@ -929,12 +929,12 @@ paAbort = 2 # /usr/include/portaudio.h: 703
 
 PaStreamCallbackResult = enum_PaStreamCallbackResult # /usr/include/portaudio.h: 703
 
-PaStreamCallback = CFUNCTYPE(UNCHECKED(c_int), POINTER(None), POINTER(None), c_ulong, POINTER(PaStreamCallbackTimeInfo), PaStreamCallbackFlags, POINTER(None)) # /usr/include/portaudio.h: 754
+PaStreamCallback = CFUNCTYPE(c_int, c_void_p, c_void_p, c_ulong, POINTER(PaStreamCallbackTimeInfo), PaStreamCallbackFlags, c_void_p) # /usr/include/portaudio.h: 754
 
 # /usr/include/portaudio.h: 816
 if hasattr(_libs['portaudio'], 'Pa_OpenStream'):
     Pa_OpenStream = _libs['portaudio'].Pa_OpenStream
-    Pa_OpenStream.argtypes = [POINTER(POINTER(PaStream)), POINTER(PaStreamParameters), POINTER(PaStreamParameters), c_double, c_ulong, PaStreamFlags, POINTER(PaStreamCallback), POINTER(None)]
+    Pa_OpenStream.argtypes = [POINTER(POINTER(PaStream)), POINTER(PaStreamParameters), POINTER(PaStreamParameters), c_double, c_ulong, PaStreamFlags, POINTER(PaStreamCallback), c_void_p]
     Pa_OpenStream.restype = PaError
 
 # /usr/include/portaudio.h: 856

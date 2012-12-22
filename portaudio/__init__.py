@@ -7,8 +7,8 @@ class PortAudio(object):
     Context manager for using PortAudio
     """
     def __enter__(self):
-        err = _portaudio.Pa_Initialize()
         try:
+            err = _portaudio.Pa_Initialize()
             raise get_exception(err)
         except NoError:
             pass

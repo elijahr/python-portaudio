@@ -18,6 +18,8 @@ class Stream(object):
         self.channel_count = channel_count
         self.flags = flags
         self.stream = POINTER(c_void_p)()
+        self._callbacks = []
+        self._user_datum = []
 
     def __enter__(self):
         self.open()
@@ -81,15 +83,23 @@ class Stream(object):
         if 'r' in mode:
             input_parameters = input_parameters or self.build_input_parameters()
 
+        if callback:
+            # we need to save a reference to the callback so it is not garbage collected
+            pa_stream_callback = PaStreamCallback(callback)
+            self._callbacks.append(pa_stream_callback)
+
+        if user_data is not None:
+            py_object_user_data = py_object(user_data)
+            self._user_datum.append(py_object_user_data)
+
         err = _portaudio.Pa_OpenStream(byref(self.stream),
                                        byref(input_parameters) if input_parameters else None,
                                        byref(output_parameters) if output_parameters else None,
                                        self.sample_rate,
-                                       c_ulong(self.frames_per_buffer),
+                                       self.frames_per_buffer,
                                        self.flags,
-                                       byref(PaStreamCallback(callback)) if callback else None,
-                                       byref(user_data) if user_data else None)
-
+                                       pa_stream_callback if callback else None,
+                                       py_object_user_data if user_data else None)
         try:
             raise get_exception(err)
         except NoError:
