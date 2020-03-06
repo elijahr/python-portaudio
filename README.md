@@ -1,4 +1,4 @@
-portaudio-ctypes
+python-portaudio
 ================
 
-A ctypes-based wrapper around the [PortAudio](http://www.portaudio.com/) audio I/O library.
+asyncio-friendly Python bindings for the [PortAudio](http://www.portaudio.com/) audio I/O library.

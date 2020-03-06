@@ -1,0 +1,14 @@
+import os
+
+
+def make_ext(modname, pyxfilename):
+    from distutils.extension import Extension
+    return Extension(
+        name=modname,
+        sources=[pyxfilename],
+        libraries=['portaudio', 'pthread'],
+        include_dirs=[
+            '.',
+            os.path.join(os.path.dirname(__file__), '..', 'src'),
+            os.path.join(os.path.dirname(__file__), '..', 'src', 'portaudio'),
+        ])
