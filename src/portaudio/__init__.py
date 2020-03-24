@@ -1,23 +1,23 @@
 import atexit
 import signal
 
-from . import buffers, configs, exceptions, formats, pa, streams
+from . import configs, exceptions, formats, pa, streams, __version__
 
 
 __all__ = \
-    buffers.__all__ \
-    + configs.__all__ \
+    configs.__all__ \
     + formats.__all__ \
     + exceptions.__all__ \
     + pa.__all__ \
-    + streams.__all__
+    + streams.__all__ \
+    + __version__.__all__
 
-from .buffers import *
 from .configs import *
 from .exceptions import *
 from .formats import *
 from .pa import *
 from .streams import *
+from .__version__ import *
 
 
 pa.initialize()

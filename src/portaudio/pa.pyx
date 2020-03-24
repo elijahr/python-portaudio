@@ -25,8 +25,11 @@ __all__ = [
     # data formats
     'FLOAT32', 'INT32', 'INT24', 'INT16', 'INT8', 'UINT8',
 
-    # flags
+    # stream flags
     'NO_FLAG', 'CLIP_OFF', 'DITHER_OFF', 'NEVER_DROP_INPUT', 'PRIME_OUTPUT_BUFFERS_USING_STREAM_CALLBACK',
+    'PLATFORM_SPECIFIC_FLAGS', 'FRAMES_PER_BUFFER_UNSPECIFIED',
+
+    # callback flags
     'INPUT_UNDERFLOW', 'INPUT_OVERFLOW', 'OUTPUT_UNDERFLOW', 'OUTPUT_OVERFLOW',
     'PRIMING_OUTPUT',
 
@@ -74,7 +77,8 @@ CLIP_OFF = paClipOff
 DITHER_OFF = paDitherOff
 NEVER_DROP_INPUT = paNeverDropInput
 PRIME_OUTPUT_BUFFERS_USING_STREAM_CALLBACK = paPrimeOutputBuffersUsingStreamCallback
-PLATFORM_SPECIFIC_SETTINGS = paPlatformSpecificFlags
+PLATFORM_SPECIFIC_FLAGS = paPlatformSpecificFlags
+FRAMES_PER_BUFFER_UNSPECIFIED = paFramesPerBufferUnspecified
 
 INPUT_UNDERFLOW = paInputUnderflow
 INPUT_OVERFLOW = paInputOverflow

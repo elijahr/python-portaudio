@@ -3,7 +3,8 @@ cython_debug/
 dist/
 *.egg-info
 src/portaudio/*.c
-src/portaudio/*.h
+src/portaudio/*.cpp
 .idea/
 Pipfile*
 __pycache__/
+.mypy_cache/

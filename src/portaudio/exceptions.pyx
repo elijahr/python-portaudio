@@ -193,7 +193,10 @@ EXCEPTIONS = {
 
 
 def check_error(err: int) -> int:
+    cdef:
+        const char* err_text
     if err != pa.paNoError:
         exc_class = EXCEPTIONS.get(err, PortAudioException)
-        raise exc_class('%s (PaErrorCode %s)' % (pa.Pa_GetErrorText(err).decode('utf8'), err))
+        err_text = pa.Pa_GetErrorText(err)
+        raise exc_class('%s (PaErrorCode %s)' % (err_text.decode('utf8'), err))
     return err

@@ -5,7 +5,7 @@ from . cimport pa
 cdef class Device:
     cdef:
         readonly int index
-        pa.PaDeviceInfo* info
+        const pa.PaDeviceInfo* info
 
 
 cdef class AbstractConfig:

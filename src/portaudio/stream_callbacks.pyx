@@ -1,8 +1,7 @@
 
-from libc.stdio cimport printf
-from libc.string cimport memcpy, memset
+from libc.string cimport memset
 
-from .buffers cimport bb_alloc, bb_commit, bb_read, bipbuffer, duplex_buffer_t
+from .buffers cimport duplex_buffer_t
 
 from . cimport pa
 
@@ -12,21 +11,28 @@ cdef pa.PaError callback_input(
     void *out_data,
     unsigned long samples_per_buffer,
     const pa.PaStreamCallbackTimeInfo* time_info,
-    pa.PaStreamCallbackFlags status_flags,
+    const pa.PaStreamCallbackFlags status_flags,
     void *_duplex_buffer
 ) nogil:
     cdef:
         duplex_buffer_t* duplex_buffer = <duplex_buffer_t*>_duplex_buffer
+        size_t total = samples_per_buffer * duplex_buffer.itemsize[0] * duplex_buffer.channels[0]
+        size_t remaining
+        char* input = <char*>in_data
+        unsigned short i = 0
 
-        bipbuffer* bip_in = duplex_buffer.bip[0]
-        size_t bytesize_in = samples_per_buffer * duplex_buffer.itemsize[0]
-        void* tmp
+    if duplex_buffer.stopping:
+        return pa.paComplete
 
-    tmp = <void*>bb_alloc(bip_in, bytesize_in, False)
+    if status_flags & pa.paInputUnderflow:
+        duplex_buffer.input_pa_underflows += 1
 
-    if tmp is not NULL:
-        memcpy(tmp, in_data, bytesize_in)
-        bb_commit(bip_in, bytesize_in)
+    if status_flags & pa.paInputOverflow:
+        duplex_buffer.input_pa_overflows += 1
+
+    remaining = duplex_buffer.queue[0].push(input, total)
+    if remaining:
+        duplex_buffer.input_ringbuf_overflows += 1
 
     return pa.paContinue
 
@@ -36,24 +42,30 @@ cdef pa.PaError callback_output(
     void *out_data,
     unsigned long samples_per_buffer,
     const pa.PaStreamCallbackTimeInfo* time_info,
-    pa.PaStreamCallbackFlags status_flags,
+    const pa.PaStreamCallbackFlags status_flags,
     void *_duplex_buffer
 ) nogil:
     cdef:
         duplex_buffer_t* duplex_buffer = <duplex_buffer_t*>_duplex_buffer
+        size_t size = samples_per_buffer * duplex_buffer.itemsize[1] * duplex_buffer.channels[1]
+        size_t popped
+        char* out = <char*>out_data
 
-        bipbuffer* bip_out = duplex_buffer.bip[1]
-        size_t bytesize_out = samples_per_buffer * duplex_buffer.itemsize[1]
-        long int read
+    if status_flags & pa.paOutputUnderflow:
+        duplex_buffer.output_pa_underflows += 1
 
-    read = bb_read(bip_out, out_data, bytesize_out, False)
+    if status_flags & pa.paOutputOverflow:
+        duplex_buffer.output_pa_overflows += 1
 
-    if read <= 0:
-        memset(out_data, 0, bytesize_out)
+    popped = duplex_buffer.queue[1].pop(out, size)
 
-    elif read < bytesize_out:
-        # Not enough data in the buffer, write silence to remainder
-        memset(out_data + read, 0, bytesize_out - read)
+    if popped < size:
+        # Underflow, write silence
+        memset(<void*>&out[popped], 0, size - popped)
+        duplex_buffer.output_ringbuf_underflows += 1
+
+    if duplex_buffer.stopping and duplex_buffer.queue[1].read_available() == 0:
+        return pa.paComplete
 
     return pa.paContinue
 
@@ -66,30 +78,5 @@ cdef pa.PaError callback_duplex(
     pa.PaStreamCallbackFlags status_flags,
     void *_duplex_buffer
 ) nogil:
-    cdef:
-        duplex_buffer_t* duplex_buffer = <duplex_buffer_t*>_duplex_buffer
-
-        bipbuffer* bip_in = duplex_buffer.bip[0]
-        size_t bytesize_in = samples_per_buffer * duplex_buffer.itemsize[0]
-        void* tmp
-
-        bipbuffer* bip_out = duplex_buffer.bip[1]
-        size_t bytesize_out = samples_per_buffer * duplex_buffer.itemsize[1]
-        long int read
-
-    tmp = <void*>bb_alloc(bip_in, bytesize_in, False)
-
-    if tmp is not NULL:
-        memcpy(tmp, in_data, bytesize_in)
-        bb_commit(bip_in, bytesize_in)
-
-    read = bb_read(bip_out, out_data, bytesize_out, False)
-
-    if read <= 0:
-        memset(out_data, 0, bytesize_out)
-
-    elif read < bytesize_out:
-        # Not enough data in the buffer, write silence to remainder
-        memset(out_data + read, 0, bytesize_out - read)
-
-    return pa.paContinue
+    callback_input(in_data, NULL, samples_per_buffer, time_info, status_flags, _duplex_buffer)
+    return callback_output(NULL, out_data, samples_per_buffer, time_info, status_flags, _duplex_buffer)

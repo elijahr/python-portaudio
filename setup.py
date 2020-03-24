@@ -2,12 +2,12 @@ import argparse
 import glob
 import itertools
 import os
+import subprocess
 import sys
 
 from setuptools import setup, Extension
 from setuptools.command.build_ext import build_ext
 from setuptools.command.install import install
-from setuptools.command.test import test
 
 
 try:
@@ -16,9 +16,26 @@ except ImportError:
     __pypy__ = None
 
 
+BUILD_REQUIRES = {
+    'cython<1.0.0': 'from Cython.Build.Dependencies import cythonize',
+    'ringbuf>=2.4.0,<3.0.0':  'import ringbuf'
+}
+
+
+for req, imprt in BUILD_REQUIRES.items():
+    try:
+        exec(imprt)
+    except ImportError:
+        errno = subprocess.call([sys.executable, '-m', 'pip', 'install', req])
+        if errno:
+            print('Please install the %s package' % req)
+            raise SystemExit(errno)
+        else:
+            exec(imprt)
+
+
 DIR = os.path.dirname(__file__)
 MODULE_PATH = os.path.join(DIR, 'src', 'portaudio')
-
 
 def get_args():
     parser = argparse.ArgumentParser()
@@ -43,18 +60,11 @@ class BuildExt(build_ext):
     ]
 
     def initialize_options(self):
-        self.single_version_externally_managed = False
         super(BuildExt, self).initialize_options()
         args = get_args()
         self.debug = args.debug
         self.profile = args.profile
         self.annotate_coverage = args.annotate_coverage
-        self.single_version_externally_managed = False
-
-    def finalize_options(self):
-        self.single_version_externally_managed = False
-        super(BuildExt, self).finalize_options()
-        self.single_version_externally_managed = False
 
 
 class Install(install):
@@ -65,29 +75,11 @@ class Install(install):
     ]
 
     def initialize_options(self):
-        self.single_version_externally_managed = False
         super(Install, self).initialize_options()
         args = get_args()
         self.debug = args.debug
         self.profile = args.profile
         self.annotate_coverage = args.annotate_coverage
-        self.single_version_externally_managed = False
-
-    def finalize_options(self):
-        self.single_version_externally_managed = False
-        super(Install, self).finalize_options()
-        self.single_version_externally_managed = False
-
-
-class Test(test):
-    def finalize_options(self):
-        super(Test, self).finalize_options()
-        self.test_args = []
-        self.test_suite = True
-
-    def run_tests(self):
-        import pytest
-        exit(pytest.main(self.test_args))
 
 
 def get_about():
@@ -103,13 +95,11 @@ def get_readme():
 
 
 def get_packages():
-    args = get_args()
     packages = ['portaudio']
     return packages
 
 
 def get_package_dir():
-    args = get_args()
     package_dir = {'portaudio': MODULE_PATH}
     return package_dir
 
@@ -122,27 +112,21 @@ def get_package_data():
 def get_ext_modules():
     args = get_args()
     ext_modules = []
-    include_dirs = [DIR, MODULE_PATH, os.path.join('bipbuffer', 'src')]
+    include_dirs = [DIR, MODULE_PATH]
 
     for path in itertools.chain(
             glob.glob(os.path.join(MODULE_PATH, '*.pyx'))):
         module_name = path.replace(MODULE_PATH, 'portaudio').replace('/', '.').replace('.pyx', '')
         sources = [path]
-        if module_name == 'portaudio.buffers':
-            sources.append(os.path.join('bipbuffer', 'src', 'bipbuffer.c'))
-
+        libraries = ['portaudio']
         ext_modules.append(Extension(
             module_name,
             sources=sources,
-            libraries=['portaudio', 'pthread'],
-            include_dirs=include_dirs
+            libraries=libraries,
+            include_dirs=include_dirs,
+            language='c++'
         ))
 
-    try:
-        from Cython.Build.Dependencies import cythonize
-    except ImportError:
-        return ext_modules
-    else:
         compile_time_env = get_cython_compile_time_env(
             defaults=dict(
                 DEBUG=args.debug,
@@ -175,6 +159,7 @@ setup(
     url=about['__url__'],
     author=about['__author__'],
     author_email=about['__author_email__'],
+    zip_safe=False,
     packages=get_packages(),
     package_dir=get_package_dir(),
     data_files=['README.md', 'LICENSE'],
@@ -182,27 +167,17 @@ setup(
     cmdclass={
         'build_ext': BuildExt,
         'install': Install,
-        'test': Test,
     },
     ext_modules=get_ext_modules(),
-    setup_requires=['cython<1.0.0'],
+    install_requires=BUILD_REQUIRES.keys(),
+    setup_requires=BUILD_REQUIRES.keys(),
     extras_require={
         'test': [
-            'numpy',
             'uvloop',
             'pytest',
             'pytest-asyncio',
-            # 'pytest-profiling',
+            'soundfile',
         ],
-        'dev': [
-            'numpy',
-            'uvloop',
-            'pytest',
-            'pytest-asyncio',
-            'pytest-instafail',
-            'pytest-profiling',
-            'pytest-cov',
-        ]
     },
     classifiers=[
         'Topic :: Multimedia :: Sound/Audio',

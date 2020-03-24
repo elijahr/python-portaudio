@@ -111,15 +111,10 @@ cdef class AbstractConfig:
         # Not supported at this time
         self.params.hostApiSpecificStreamInfo = NULL
 
-        print("self.device")
         self.device = device
-        print("self.channels")
         self.channels = channels
-        print("self.format")
         self.format = format
-        print("self.suggested_latency")
         self.suggested_latency = suggested_latency
-        print("done")
 
     def __init__(
         self,
