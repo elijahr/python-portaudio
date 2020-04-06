@@ -177,6 +177,7 @@ setup(
             'pytest',
             'pytest-asyncio',
             'soundfile',
+            'numpy',
         ],
     },
     classifiers=[

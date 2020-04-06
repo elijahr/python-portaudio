@@ -17,3 +17,5 @@ ctypedef struct duplex_buffer_t:
     unsigned long long output_pa_overflows
     unsigned long long output_pa_underflows
     unsigned long long output_ringbuf_underflows
+
+    spsc_queue[char]* null_queue[2]

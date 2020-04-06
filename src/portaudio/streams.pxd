@@ -5,15 +5,19 @@ from . cimport buffers, pa
 
 
 cdef class Stream:
-    cdef readonly bint running
-    cdef readonly double sample_rate
-    cdef readonly int samples_per_buffer
-    cdef readonly int flags
-    cdef object lock
+    cdef:
+         readonly bint running
+         readonly double sample_rate
+         readonly int frames_per_buffer
+         readonly unsigned long flags
 
-    cdef readonly tuple config
-    cdef readonly tuple buffer
-    cdef buffers.duplex_buffer_t duplex_buffer
+         readonly tuple config
+         readonly tuple buffer
+         buffers.duplex_buffer_t duplex_buffer
 
-    cdef pa.PaStream * stream
+         readonly tuple null_buffer
+
+         pa.PaStream * stream
+         pa.PaStreamCallback* callback
+         pa.PaStreamParameters* params[2]
 

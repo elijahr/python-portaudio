@@ -41,6 +41,9 @@ __all__ = [
 INITIALIZED = False
 
 
+ACTIVE_STREAMS = set()
+
+
 def initialize():
     from . import exceptions
     global INITIALIZED
@@ -53,6 +56,11 @@ def terminate(*args, **kwargs):
     from . import exceptions
     global INITIALIZED
     if INITIALIZED:
+        for stream in set(ACTIVE_STREAMS):
+            try:
+                stream.stop(abort=True)
+            except exceptions.StreamIsStopped:
+                pass
         exceptions.check_error(Pa_Terminate())
         INITIALIZED = False
 
@@ -142,3 +150,12 @@ ABORT = paAbort
 
 cdef class Nothing:
     pass
+
+
+cdef unsigned long set_flag(unsigned long flags, bint enabled, unsigned long flag) nogil:
+    if enabled:
+        flags |= <unsigned long>flag
+    else:
+        # Clear the flag
+        flags &= ~(<unsigned long>flag)
+    return flags

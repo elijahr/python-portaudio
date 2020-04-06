@@ -2,6 +2,12 @@
 from . cimport pa
 
 
+cdef class HostApi:
+    cdef:
+        readonly int index
+        const pa.PaHostApiInfo* info
+
+
 cdef class Device:
     cdef:
         readonly int index

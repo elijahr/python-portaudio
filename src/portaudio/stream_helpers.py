@@ -23,10 +23,10 @@ async def stream_read(
     if not self.running or self.stopping:
         exceptions.check_error(pa.STREAM_IS_STOPPED)
 
-    buffer = self.buffer[0]
-    if buffer is None:
+    if not self.is_input:
         exceptions.check_error(pa.CAN_NOT_READ_FROM_AN_OUTPUT_ONLY_STREAM)
 
+    buffer = self.buffer[0]
     parts = []
     count *= self.config[0].channels
     total = 0
@@ -42,7 +42,10 @@ async def stream_read(
                 exceptions.check_error(pa.STREAM_IS_STOPPED)
         else:
             break
-    if parts:
+
+    if len(parts) == 1:
+        return parts[0]
+    elif len(parts):
         return concatenate(*parts)
     return None
 
@@ -55,11 +58,11 @@ async def stream_write(
     if not self.running or self.stopping:
         exceptions.check_error(pa.STREAM_IS_STOPPED)
 
-    buffer = self.buffer[1]
-    if buffer is None:
+    if not self.is_output:
         exceptions.check_error(pa.CAN_NOT_WRITE_TO_AN_INPUT_ONLY_STREAM)
 
-    remaining = reshape(data, interleaved=self.interleaved)
+    buffer = self.buffer[1]
+    remaining = unshape(data, interleaved=self.config[1].interleaved)
 
     while True:
         # spin until all data has been pushed
@@ -78,7 +81,7 @@ async def stream_write(
             exceptions.check_error(pa.STREAM_IS_STOPPED)
 
 
-def reshape(data: Any, interleaved: bool) -> Any:
+def unshape(data: Any, interleaved: bool) -> Any:
     memview = memoryview(data)
     try:
         if memview.ndim > 1:

@@ -220,3 +220,6 @@ cdef extern from "portaudio.h":
 
 cdef class Nothing:
     pass
+
+
+cdef unsigned long set_flag(unsigned long flags, bint enabled, unsigned long flag) nogil

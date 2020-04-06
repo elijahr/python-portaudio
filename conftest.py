@@ -2,6 +2,7 @@ import asyncio
 import contextlib
 import glob
 import itertools
+import logging
 import os
 
 import pytest
@@ -31,6 +32,11 @@ def loop_mod(request):
     return request.param
 
 
+@pytest.fixture(autouse=True)
+def foo():
+    print('TEST IS', os.environ.get('PYTEST_CURRENT_TEST'))
+
+
 def event_loop(loop_mod):
     loop = loop_mod.new_event_loop()
     asyncio.set_event_loop(loop)
@@ -41,13 +47,11 @@ def event_loop(loop_mod):
     with contextlib.closing(loop):
         yield loop
 
-# def pytest_pycollect_makeitem(collector, name, obj):
-#     breakpoint()
-#
-#
-# def pytest_collect_directory(path, parent):
-#     breakpoint()
-#
-#
-# def pytest_collect_file(path, parent):
-#     breakpoint()
+
+def pytest_configure(config):
+    if config.getoption('verbose') > 0:
+        h = logging.StreamHandler()
+        h.setLevel(logging.DEBUG)
+        logger = logging.getLogger('portaudio')
+        logger.addHandler(h)
+        logger.setLevel(logging.DEBUG)
