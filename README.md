@@ -3,7 +3,7 @@ python-portaudio
 
 asyncio-friendly Python bindings for the [PortAudio](http://www.portaudio.com/) audio I/O library.
 
-
+Alpha-quality at the moment.
 
 
 `shape[0]` is the number of rows. For interleaved data, this would be `size / channels`. For non interleaved data,
